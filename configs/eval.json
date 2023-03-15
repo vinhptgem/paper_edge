@@ -1,0 +1,6 @@
+{
+    "Enet_ckpt": "'logs/demo_checkpoint_81.pt'",
+    "Tnet_ckpt": "'logs/demo_checkpoint_81.pt'",
+    "docunet_benchmark_img_dir": "data/res_test",
+    "dst_dir": "benchmarks"
+}
