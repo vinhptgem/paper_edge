@@ -128,16 +128,16 @@ class GlobalWarper(nn.Module):
         self.to_warp[0].bias.data.fill_(0.0)
     
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, 256), torch.linspace(-1, 1, 256))
-        self.coord = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu')
+        self.coord = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda')
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, 64), torch.linspace(-1, 1, 64))
         ### note we mulitply a 0.9 so the network is initialized closer to GT. This is different from localwarper net
-        self.basegrid = torch.stack((ix * 0.9, iy * 0.9), dim=0).unsqueeze(0).to('cpu')
+        self.basegrid = torch.stack((ix * 0.9, iy * 0.9), dim=0).unsqueeze(0).to('cuda')
 
         # # box filter
         # ksize = 7
         # p = int((ksize - 1) / 2)
         # self.pad_replct = partial(F.pad, pad=(p, p, p, p), mode='replicate')
-        # bw = torch.ones(1, 1, ksize, ksize, device='cpu') / ksize / ksize
+        # bw = torch.ones(1, 1, ksize, ksize, device='cuda') / ksize / ksize
         # self.box_filter = partial(F.conv2d, weight=bw)
 
 
@@ -189,15 +189,15 @@ class LocalWarper(nn.Module):
         self.to_warp[0].bias.data.fill_(0.0)
 
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, 256), torch.linspace(-1, 1, 256))
-        self.coord = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu')
+        self.coord = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda')
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, 64), torch.linspace(-1, 1, 64))
-        self.basegrid = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu')
+        self.basegrid = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda')
 
         # box filter
         ksize = 5
         p = int((ksize - 1) / 2)
         self.pad_replct = partial(F.pad, pad=(p, p, p, p), mode='replicate')
-        bw = torch.ones(1, 1, ksize, ksize, device='cpu') / ksize / ksize
+        bw = torch.ones(1, 1, ksize, ksize, device='cuda') / ksize / ksize
         self.box_filter = partial(F.conv2d, weight=bw)
 
     def forward(self, im):
@@ -236,8 +236,8 @@ class MaskLoss(nn.Module):
         self.tpswarper = TpsWarp(gsize)
         self.pspwarper = PspWarp()
         # self.imsize = imsize
-        self.msk = torch.ones(1, 1, gsize, gsize, device='cpu')
-        self.cn = torch.tensor([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=torch.float, device='cpu').unsqueeze(0)
+        self.msk = torch.ones(1, 1, gsize, gsize, device='cuda')
+        self.cn = torch.tensor([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=torch.float, device='cuda').unsqueeze(0)
 
     def forward(self, gs, y, s):
         # resize gs to s*s
@@ -247,7 +247,7 @@ class MaskLoss(nn.Module):
         # use only the boundary points
         srcpts = gs_to_bd(tgs)
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu').expand_as(tgs)
+        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda').expand_as(tgs)
         dstpts = gs_to_bd(t)
 
         tgs_f = self.tpswarper(srcpts, dstpts.detach())
@@ -332,7 +332,7 @@ class WarperUtil(nn.Module):
         s = self.s # 64
         # -0.2 to 0.2
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu').expand(B, -1, -1, -1)
+        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda').expand(B, -1, -1, -1)
 
         tt = t.clone()
 
@@ -369,12 +369,12 @@ class WarperUtil(nn.Module):
 
             srcpts = torch.stack([
                 t[..., 0, 0], t[..., 0, -1], t[..., -1, 0], t[..., -1, -1],
-                ps.to('cpu')
+                ps.to('cuda')
             ], dim=2)
             srcpts = torch.cat([pbd, srcpts], dim=2).permute(0, 2, 1)
             dstpts = torch.stack([
                 t[..., 0, 0], t[..., 0, -1], t[..., -1, 0], t[..., -1, -1],
-                pt.to('cpu')
+                pt.to('cuda')
             ], dim=2)
             dstpts = torch.cat([pbd, dstpts], dim=2).permute(0, 2, 1)
             # print(srcpts)
@@ -392,11 +392,11 @@ class WarperUtil(nn.Module):
 
             srcpts = torch.cat([
                 t[..., -1, :], t[..., 0, :], t[..., 1 : -1, 0], t[..., 1 : -1, -1],
-                ps.unsqueeze(2).to('cpu')
+                ps.unsqueeze(2).to('cuda')
             ], dim=2).permute(0, 2, 1)
             dstpts = torch.cat([
                 t[..., -1, :], t[..., 0, :], t[..., 1 : -1, 0], t[..., 1 : -1, -1],
-                pt.unsqueeze(2).to('cpu')
+                pt.unsqueeze(2).to('cuda')
             ], dim=2).permute(0, 2, 1)
             tgs = self.tpswarper(srcpts, dstpts)
             tt = F.grid_sample(tt, tgs.permute(0, 2, 3, 1), align_corners=True)
@@ -423,13 +423,13 @@ class WarperUtil(nn.Module):
             c = vn.sum(dim=2, keepdim=True) #B 1 1
             a = vn / c
             b = torch.cumsum(a, dim=2)
-            b = torch.cat((torch.zeros(B, 1, 1, device='cpu'), b[..., :-1]), dim=2)
+            b = torch.cat((torch.zeros(B, 1, 1, device='cuda'), b[..., :-1]), dim=2)
             
-            t = torch.linspace(1e-5, 1 - 1e-5, s).view(1, s, 1).to('cpu')
+            t = torch.linspace(1e-5, 1 - 1e-5, s).view(1, s, 1).to('cuda')
             t = t - b # B s n-1
             # print(t)
             
-            tt = torch.cat((t, -torch.ones(B, s, 1, device='cpu')), dim=2) # B s n
+            tt = torch.cat((t, -torch.ones(B, s, 1, device='cuda')), dim=2) # B s n
             tt = tt[..., 1:] * tt[..., :-1] # B s n-1
             tt = (tt < 0).float()
             d = torch.matmul(v0, tt.permute(0, 2, 1)) + torch.matmul(v, (tt * t).permute(0, 2, 1)) # B 2 s
@@ -438,7 +438,7 @@ class WarperUtil(nn.Module):
 
         gs = F.interpolate(gs, s, mode='bilinear', align_corners=True)
         B = gs.size(0)
-        dst_cn = torch.tensor([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=torch.float, device='cpu').expand(B, -1, -1)
+        dst_cn = torch.tensor([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=torch.float, device='cuda').expand(B, -1, -1)
         src_cn = torch.stack([gs[..., 0, 0], gs[..., 0, -1], gs[..., -1, -1], gs[..., -1, 0]], dim=2).permute(0, 2, 1)
         M = self.pspwarper.pspmat(src_cn, dst_cn).detach()
         invM = self.pspwarper.pspmat(dst_cn, src_cn).detach()
@@ -464,7 +464,7 @@ class LocalLoss(nn.Module):
     def identity_loss(self, gs):
         s = gs.size(2)
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu').expand_as(gs)
+        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda').expand_as(gs)
         loss = F.l1_loss(gs, t.detach())
         return loss
 
@@ -490,7 +490,7 @@ class SupervisedLoss(nn.Module):
         # fm in [0, 1]
         B, _, s, _ = fm.size()
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu').expand(B, -1, -1, -1)
+        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda').expand(B, -1, -1, -1)
         srcpts = []
         dstpts = []
         for ii in range(B):
@@ -529,7 +529,7 @@ class SupervisedLoss(nn.Module):
         # sample tgs to gen invtgs
         B, _, s, _ = dg.size()
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cpu').expand(B, -1, -1, -1)
+        t = torch.stack((ix, iy), dim=0).unsqueeze(0).to('cuda').expand(B, -1, -1, -1)
         num_sample = 512
         # n = (H-2)*(W-2)
         n = s * s

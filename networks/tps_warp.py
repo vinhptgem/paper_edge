@@ -6,7 +6,7 @@ class TpsWarp(nn.Module):
     def __init__(self, s):
         super(TpsWarp, self).__init__()
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        self.gs = torch.stack((ix, iy), dim=2).reshape((1, -1, 2)).to('cpu')
+        self.gs = torch.stack((ix, iy), dim=2).reshape((1, -1, 2)).to('cuda')
         self.sz = s
 
 
@@ -19,7 +19,7 @@ class TpsWarp(nn.Module):
         # B.n.n
         K = delta.norm(dim=3)
         # Rsq = torch.sum(delta**2, dim=3)
-        # Rsq += torch.eye(n, device='cpu')
+        # Rsq += torch.eye(n, device='cuda')
         # Rsq[Rsq == 0] = 1.
         # K = 0.5 * Rsq * torch.log(Rsq)
         # c = -150
@@ -29,17 +29,17 @@ class TpsWarp(nn.Module):
         # K = torch.sqrt(Rsq)
         # print(K)
         # K[torch.isnan(K)] = 0.
-        P = torch.cat((torch.ones((B, n, 1), device='cpu'), src), 2)
+        P = torch.cat((torch.ones((B, n, 1), device='cuda'), src), 2)
         L = torch.cat((K, P), 2)
-        t = torch.cat((P.permute(0, 2, 1), torch.zeros((B, 3, 3), device='cpu')), 2)
+        t = torch.cat((P.permute(0, 2, 1), torch.zeros((B, 3, 3), device='cuda')), 2)
         L = torch.cat((L, t), 1)
         # LInv = L.inverse()
         # # wv is B.n+3.2
-        # wv = torch.matmul(LInv, torch.cat((dst, torch.zeros((B, 3, 2), device='cpu')), 1))
+        # wv = torch.matmul(LInv, torch.cat((dst, torch.zeros((B, 3, 2), device='cuda')), 1))
         # the above implementation has stability problem near the boundaries
-        # print('*******************************', torch.cat((dst, torch.zeros((B, 3, 2), device='cpu')), 1).shape)
+        # print('*******************************', torch.cat((dst, torch.zeros((B, 3, 2), device='cuda')), 1).shape)
         # print('*************L******************', L.shape)
-        wv = torch.linalg.solve(L, torch.cat((dst, torch.zeros((B, 3, 2), device='cpu')), 1))
+        wv = torch.linalg.solve(L, torch.cat((dst, torch.zeros((B, 3, 2), device='cuda')), 1))
 
         # get the grid sampler
         s = self.gs.size(1)
@@ -55,7 +55,7 @@ class TpsWarp(nn.Module):
         # K = torch.sqrt(Rsq)
         # K[torch.isnan(K)] = 0.
         gs = gs.expand(B, -1, -1)
-        P = torch.cat((torch.ones((B, s, 1), device='cpu'), gs), 2)
+        P = torch.cat((torch.ones((B, s, 1), device='cuda'), gs), 2)
         L = torch.cat((K, P), 2)
         gs = torch.matmul(L, wv)
         return gs.reshape(B, self.sz, self.sz, 2).permute(0, 3, 1, 2)
@@ -68,9 +68,9 @@ class PspWarp(nn.Module):
         # B, 4, 2
         B, _, _ = src.size()
         s = torch.cat([
-            torch.cat([src, torch.ones((B, 4, 1), device='cpu'), torch.zeros((B, 4, 3), device='cpu'), 
+            torch.cat([src, torch.ones((B, 4, 1), device='cuda'), torch.zeros((B, 4, 3), device='cuda'), 
                         -dst[..., 0 : 1] * src[..., 0 : 1], -dst[..., 0 : 1] * src[..., 1 : 2]], dim=2),
-            torch.cat([torch.zeros((B, 4, 3), device='cpu'), src, torch.ones((B, 4, 1), device='cpu'), 
+            torch.cat([torch.zeros((B, 4, 3), device='cuda'), src, torch.ones((B, 4, 1), device='cuda'), 
                         -dst[..., 1 : 2] * src[..., 0 : 1], -dst[..., 1 : 2] * src[..., 1 : 2]], dim=2)
         ], dim=1)
         t = torch.cat([dst[..., 0 : 1], dst[..., 1 : 2]], dim=1)
@@ -89,9 +89,9 @@ class PspWarp(nn.Module):
         # for ii in range(4):
         #     xy = src[:, ii : ii + 1, :]
         #     uv = dst[:, ii : ii + 1, :]
-        #     t0 = [xy, torch.ones((B, 1, 1), device='cpu'), torch.zeros((B, 1, 3), device='cpu'), -uv[..., 0] * xy[..., 0], -uv[..., 0] * xy[..., 1]]
+        #     t0 = [xy, torch.ones((B, 1, 1), device='cuda'), torch.zeros((B, 1, 3), device='cuda'), -uv[..., 0] * xy[..., 0], -uv[..., 0] * xy[..., 1]]
         #     t0 = torch.cat(t0, dim=2)
-        #     t1 = [torch.zeros((B, 1, 3), device='cpu'), xy, torch.ones((B, 1, 1), device='cpu'), -uv[..., 1] * xy[..., 0], -uv[..., 1] * xy[..., 1]]
+        #     t1 = [torch.zeros((B, 1, 3), device='cuda'), xy, torch.ones((B, 1, 1), device='cuda'), -uv[..., 1] * xy[..., 0], -uv[..., 1] * xy[..., 1]]
         #     t1 = torch.cat(t1, dim=2)
 
 class IdwWarp(nn.Module):
@@ -99,7 +99,7 @@ class IdwWarp(nn.Module):
     def __init__(self, s):
         super().__init__()
         iy, ix = torch.meshgrid(torch.linspace(-1, 1, s), torch.linspace(-1, 1, s))
-        self.gs = torch.stack((ix, iy), dim=2).reshape((1, -1, 2)).to('cpu')
+        self.gs = torch.stack((ix, iy), dim=2).reshape((1, -1, 2)).to('cuda')
         self.s = s
 
     def forward(self, src, dst):
@@ -142,14 +142,14 @@ if __name__ == "__main__":
     # im = cv2.imread(img_path) / 255.
     # im = im[..., ::-1].copy()
     # im = cv2.resize(im, (256, 256), cv2.INTER_AREA).astype(np.float32)
-    # im = torch.from_numpy(im.transpose(2, 0, 1)).unsqueeze(0).to('cpu')
+    # im = torch.from_numpy(im.transpose(2, 0, 1)).unsqueeze(0).to('cuda')
 
     # x = np.random.choice(np.arange(64), 50, False)
     # y = np.random.choice(np.arange(64), 50, False)
 
-    # src = torch.tensor([[x, y]], device='cpu', dtype=torch.float32).permute(0, 2, 1)
+    # src = torch.tensor([[x, y]], device='cuda', dtype=torch.float32).permute(0, 2, 1)
     # src = (src - 32) / 32.
-    # dst = torch.from_numpy(bm[y, x, :]).unsqueeze(0).to('cpu')
+    # dst = torch.from_numpy(bm[y, x, :]).unsqueeze(0).to('cuda')
 
     # # print(src.size())
     # # print(dst.size())
@@ -169,15 +169,15 @@ if __name__ == "__main__":
     # vis.images(rim, win='sk3')
     tpswarp = TpsWarp(16)
     import matplotlib.pyplot as plt
-    cn = torch.tensor([[-1, -1], [1, -1], [1, 1], [-1, 1], [-0.5, -1], [0, -1], [0.5, -1]], dtype=torch.float, device='cpu').unsqueeze(0)
-    pn = torch.tensor([[-1, -0.5], [1, -1], [1, 1], [-1, 0.5], [-0.5, -1], [0, -0.5], [0.5, -1]], device='cpu').unsqueeze(0)
+    cn = torch.tensor([[-1, -1], [1, -1], [1, 1], [-1, 1], [-0.5, -1], [0, -1], [0.5, -1]], dtype=torch.float, device='cuda').unsqueeze(0)
+    pn = torch.tensor([[-1, -0.5], [1, -1], [1, 1], [-1, 0.5], [-0.5, -1], [0, -0.5], [0.5, -1]], device='cuda').unsqueeze(0)
     pspwarp = PspWarp()
     # # print(cn.dtype)
     M = pspwarp.pspmat(cn[..., 0 : 4, :], pn[..., 0 : 4, :])
     invM = pspwarp.pspmat(pn[..., 0 : 4, :], cn[..., 0 : 4, :])
     # iy, ix = torch.meshgrid(torch.linspace(-1, 1, 8), torch.linspace(-1, 1, 8))
-    # gs = torch.stack((ix, iy), dim=2).reshape((1, -1, 2)).to('cpu')
-    # t = pspwarp(gs, M).reshape(8, 8, 2).detach().cpu().numpy()
+    # gs = torch.stack((ix, iy), dim=2).reshape((1, -1, 2)).to('cuda')
+    # t = pspwarp(gs, M).reshape(8, 8, 2).detach().cuda().numpy()
     # print(M)
 
     t = tpswarp(cn, pn)

@@ -131,3 +131,6 @@ dmypy.json
 .vscode
 logs/
 models/
+output/
+data/selected_real_dataset
+data/texmix

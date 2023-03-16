@@ -1,13 +1,13 @@
 {
     "batch_size": 64,
-    "epochs": 10,
+    "epochs": 300,
     "exp_dir": "logs",
     "lr_G": 1e-5,
     "lr_L": 1e-5,
     "G_ckpt": "models/G_w_checkpoint_13820.pt",
     "L_ckpt": "models/L_w_checkpoint_27640.pt",
     "doc3d_root": "# root dir to the doc3d dataset.",
-    "diw_root": "/home/gem/Downloads/unwrarp/dataset/selected_real_dataset",
+    "diw_root": "data/selected_real_dataset",
     "vis_port": 10086,
     "vis_freq": 100,
     "brief": "demo training"

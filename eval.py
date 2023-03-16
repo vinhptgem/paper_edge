@@ -29,18 +29,18 @@ dloader = DataLoader(d130, batch_size=64, num_workers=2, pin_memory=True)
 
 from networks.paperedge import GlobalWarper, LocalWarper, WarperUtil
 
-netG = GlobalWarper().to('cpu')
+netG = GlobalWarper().to('cuda')
 # path to the Enet checkpoint
-netG.load_state_dict(torch.load(args['Enet_ckpt'], map_location=torch.device('cpu'))['G'])
+netG.load_state_dict(torch.load(args['Enet_ckpt'])['G'])
 # netG.load_state_dict(torch.load('G_w_checkpoint_13820.pt')['G'])
 netG.eval()
-netL = LocalWarper().to('cpu')
+netL = LocalWarper().to('cuda')
 # path to the Tnet checkpoint
-netL.load_state_dict(torch.load(args['Tnet_ckpt'], map_location=torch.device('cpu'))['L'])
+netL.load_state_dict(torch.load('Tnet_ckpt')['L'])
 # netL.load_state_dict(torch.load('L_w_checkpoint_27640.pt')['L'])
 netL.eval()
 
-warpUtil = WarperUtil(64).to('cpu')
+warpUtil = WarperUtil(64).to('cuda')
 
 with torch.no_grad():
     res = []
@@ -50,7 +50,7 @@ with torch.no_grad():
     ls = []
     for x in dloader:
         inx.append(x)
-        x = x.to('cpu')
+        x = x.to('cuda')
         # global
         d = netG(x)
         d = warpUtil.global_post_warp(d, 64)
@@ -97,7 +97,7 @@ for k in range(1, 66):
     for m in range(1, 3):
         im = cv2.imread(os.path.join(img_dir, f'{k}_{m}.png')).astype(np.float32) / 255.0
         im = torch.from_numpy(np.transpose(im, (2, 0, 1)))
-        im = im.to('cpu').unsqueeze(0)
+        im = im.to('cuda').unsqueeze(0)
         d = gs[ct : ct + 1, ...]
         d = F.interpolate(d, (im.size(2), im.size(3)), mode='bilinear', align_corners=True)
         y = F.grid_sample(im, d.permute(0, 2, 3, 1), align_corners=True).detach()

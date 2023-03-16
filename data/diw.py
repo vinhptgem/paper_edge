@@ -75,30 +75,32 @@ class DIWDataAug(nn.Module):
         msk_list = []
         for ii in range(B):
             x_img = img[ii]
-            x_msk = mask[ii]
-            y, x = x_msk.nonzero(as_tuple=True)
-            minx = x.min()
-            maxx = x.max()
-            miny = y.min()
-            maxy = y.max()
-            x_img = x_img[:, miny : maxy + 1, minx : maxx + 1]
-            x_msk = x_msk[None, miny : maxy + 1, minx : maxx + 1]
+            x_msk = mask[ii] * 1.0
+            # y, x = x_msk.nonzero(as_tuple=True)
+            # minx = x.min()
+            # maxx = x.max()
+            # miny = y.min()
+            # maxy = y.max()
+            # x_img = x_img[:, miny : maxy + 1, minx : maxx + 1]
+            # x_msk = x_msk[None, miny : maxy + 1, minx : maxx + 1]
 
-            # padding
-            x_img = F.pad(x_img, c[ii, : 4].tolist())
-            x_msk = F.pad(x_msk, c[ii, : 4].tolist())
+            # # padding
+            # x_img = F.pad(x_img, c[ii, : 4].tolist())
+            # x_msk = F.pad(x_msk, c[ii, : 4].tolist())
 
-            # replace bg
-            if c[ii][-1] > 2:
-                x_bg = bg[ii][:, :x_img.size(1), :x_img.size(2)]
-            else:
-                x_bg = torch.ones_like(x_img) * torch.rand((3, 1, 1), device=x_img.device)
-            x_msk = x_msk.float()
-            x_img = x_img * x_msk + x_bg * (1. - x_msk)
+            # # replace bg
+            # if c[ii][-1] > 2:
+            #     x_bg = bg[ii][:, :x_img.size(1), :x_img.size(2)]
+            # else:
+            #     x_bg = torch.ones_like(x_img) * torch.rand((3, 1, 1), device=x_img.device)
+            # x_msk = x_msk.float()
+            # x_img = x_img * x_msk + x_bg * (1. - x_msk)
 
             # resize
             x_img = KG.resize(x_img[None, :], (256, 256))
             x_msk = KG.resize(x_msk[None, :], (64, 64))
+            x_msk = x_msk[None, :]
+            
             img_list.append(x_img)
             msk_list.append(x_msk)
         img = torch.cat(img_list)

@@ -38,7 +38,7 @@ with open('configs/' + exp_config, 'r') as fid:
     args = json.load(fid)
 print(args)
 Path(args['exp_dir']).mkdir(parents=True, exist_ok=True)
-device = 'cpu'
+device = 'cuda'
 
 # netG is Enet and netL is Tnet in the paper.
 netG = GlobalWarper().to(device)
@@ -191,6 +191,7 @@ def train_G_step_w(engine, batch):
     d = F.interpolate(dd, size=256, mode='bilinear', align_corners=True)
     fake_x = F.grid_sample(x, d.permute(0, 2, 3, 1), align_corners=True).detach()
     engine.state.img = [x, fake_x, xm]
+    engine.state.metrics['loss_train'] = loss1.item()
     return {'loss1': loss1.item()}
 
 def train_L_step_w(engine, batch):
@@ -243,12 +244,13 @@ def train_L_step_w(engine, batch):
     fake_x = F.grid_sample(x, F.interpolate(xd, 256, mode='bilinear', align_corners=True).permute(0, 2, 3, 1), align_corners=True)
     fake_xp = F.grid_sample(xp, F.interpolate(xpd, 256, mode='bilinear', align_corners=True).permute(0, 2, 3, 1), align_corners=True)
     engine.state.img = [x.detach(), xp.detach(), fake_x.detach(), fake_xp.detach()]
+    engine.state.metrics['loss_train'] = loss1.item()
     return {'loss1': loss1.item()}
 
 # trainer = Engine(train_G_step_s)
 # trainer = Engine(train_L_step_s)
-# trainer = Engine(train_G_step_w)
-trainer = Engine(train_L_step_w)
+trainer = Engine(train_G_step_w)
+# trainer = Engine(train_L_step_w)
 # trainer.state.metrics['loss_val'] = 0
 
 # validator = Engine(validate_G_step_s)
@@ -281,7 +283,7 @@ RunningAverage(alpha=0.9, output_transform=lambda x: x['loss1']).attach(trainer,
 monitoring_metrics = ['loss1']
 
 # model checkpoint
-ckpt_hdl = ModelCheckpoint(args['exp_dir'], model_id, n_saved=1, require_empty=False)
+ckpt_hdl = ModelCheckpoint(args['exp_dir'], model_id, n_saved=1, require_empty=False, score_function=lambda x: -x.state.metrics['loss_train'])
 # ckpt_g_w = ModelCheckpoint(os.path.join(args['exp_dir'], 'G_w_check_point'), model_id, n_saved=1, require_empty=False)
 # ckpt_l_w = ModelCheckpoint(os.path.join(args['exp_dir'], 'L_w_check_point'), model_id, n_saved=1, require_empty=False)
 # ckpt_hdl = ModelCheckpoint(args['exp_dir'], model_id, n_saved=3, require_empty=False)
